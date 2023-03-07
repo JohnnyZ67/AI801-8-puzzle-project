@@ -67,6 +67,107 @@ class TilePuzzle(object):
             yield (index, newBord)
 
     # Required
+    def find_solutions_bfs(self):
+        """
+        Finds the solution to the puzzle using;
+        Breadth First Search
+        """
+        self.steps = []
+        self.visited = []
+        self.successorsFound = 1 # this starts on.
+
+        goal = create_tile_puzzle(len(self.board), len(self.board[0])).get_board()
+
+        def nextLevel(prevouse = ()):
+            succ = 0
+            #print("Origial: " + str(self.get_board()))
+            for moves, new_board in self.successors(): # Find the successors.
+                
+                # make sure they were not visited.  #Save when more than one goal if found
+                if new_board.get_board() not in self.visited or new_board.get_board() == goal: 
+                    #print("successors: " + str(moves) + "   "+ str(new_board.get_board()))
+                    
+                    succ = 1
+                    #print("Succ = " + str(succ))
+
+                    # Populete the lists.
+                    if len(prevouse) > 0:
+                        newnewlist = prevouse
+                        if type(newnewlist) == type(list()):
+                            newnewlist = prevouse[:]
+                            newnewlist.append(moves)
+
+                        else: # speciel case for the first itteration.
+                            newnewlist = [prevouse]
+                            newnewlist.append(moves)
+                        self.steps.append([newnewlist, new_board.get_board()])
+                    else:
+                        self.steps.append([[moves], new_board.get_board()])
+                    self.visited.append(new_board.get_board())
+                #else:
+                #    print("Already seen: " + str(moves) + "   "+ str(new_board.get_board()))
+            return succ
+
+        
+
+        def checkThem(index):
+            """
+            Check for all false in the steps list.
+            """
+            #print("Checking: " + str(create_tile_puzzle(len(self.board[0]), len(self.board)).get_board()))
+            #print("with: " + str(self.steps[index][1]))
+
+            # Return if an answer has been found in the list of posibilites
+            if create_tile_puzzle(len(self.board), len(self.board[0])).get_board() == self.steps[index][1]:
+                #print("DONE")
+                return self.steps[index][0]
+            else:
+                return 0
+        #Special case for no moves
+        if goal == self.board:
+            yield []
+            return
+
+        # special case for only one move
+        nextLevel()
+
+        for index in range(len(self.steps)):
+            answer = checkThem(index)
+            if answer != 0: 
+                return answer
+
+        # Use a FOUND SUCCESSSER verable to know if i need to keep checking.
+        while self.successorsFound == 1:
+            self.successorsFound = 0
+            for index in range(len(self.steps)):
+                # Go through the steps list replacing them with the next height. adding nxn entries
+                    if len(self.steps[index]) < 3:
+                        # save the current board
+                        currentBoard = self.copy().get_board()
+                        
+                        self.board = self.steps[index][1] # Set the board
+                        #print("Origial Stored: " + str(self.steps[index][1]))
+                        #print("Origial After set: " + str(self.get_board()))
+                        
+
+                        succ = nextLevel(self.steps[index][0])
+                        self.steps[index].append(1)
+                        if succ == 1:
+                            self.successorsFound = 1
+                        #print("Succ = " + str(succ))
+                        #print("successorsFound = " + str(self.successorsFound))
+
+                        self.board = currentBoard
+            
+
+            for index in range(len(self.steps)): # only check what hasn't been checked before
+                answer = checkThem(index)
+                if answer != 0: 
+                    yield answer #list(dict.fromkeys()) # remove dup
+                    self.successorsFound = 0 #this stops the recursion, when answers are found at this level
+        return None
+
+    # Required
     def find_solutions_iddfs(self):
         """
         Finds the solution to the puzzle using;
@@ -108,6 +209,7 @@ class TilePuzzle(object):
                 #    print("Already seen: " + str(moves) + "   "+ str(new_board.get_board()))
             return succ
 
+        
 
         def checkThem(index):
             """
