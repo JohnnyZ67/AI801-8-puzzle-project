@@ -86,17 +86,22 @@ class TilePuzzleGUI(tkinter.Frame):
             fill=tkinter.X, padx=1, pady=1)
         tkinter.Button(menu, text="Solve Using IDDFS",
             command=self.solve_iddfs_click).pack(fill=tkinter.X, padx=1, pady=1)
+        tkinter.Button(menu, text="Solve Using BFS",
+            command=self.solve_bfs_click).pack(fill=tkinter.X, padx=1, pady=1)
         tkinter.Button(menu, text="Solve Using A*",
             command=self.solve_a_star_click).pack(fill=tkinter.X, padx=1, pady=1)
 
         menu.pack(side=tkinter.RIGHT)
 
     def scramble_click(self):
-        self.puzzle.scramble(self.rows * self.cols * 20)
+        self.puzzle.scramble(self.rows * self.cols * 2)
         self.board.update_tiles()
 
     def solve_iddfs_click(self):
-        self.board.animate_moves(next(self.puzzle.find_solutions_iddfs()))
+        self.board.animate_moves(next(self.puzzle.find_solution_iddfs()))
+
+    def solve_bfs_click(self):
+        self.board.animate_moves(next(self.puzzle.find_solution_bfs()))
 
     def solve_a_star_click(self):
         self.board.animate_moves(self.puzzle.find_solution_a_star())
