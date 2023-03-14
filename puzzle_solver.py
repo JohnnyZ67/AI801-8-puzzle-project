@@ -4,17 +4,19 @@ from math import sqrt
 import time
 
 def create_tile_puzzle(rows, cols):
-    return TilePuzzle([[0 if x*y == cols*rows else x+(cols*(y-1)) for x in range(1, cols+1)] for y in range(1, rows+1)])
+    return TilePuzzle([[0 if x*y == cols*rows else x+(cols*(y-1)) for x in range(1, cols+1)] for y in range(1, rows+1)], rows, cols)
 
 class TilePuzzle(object):
     
-    def __init__(self, board):
+    def __init__(self, board, rows, cols):
         self.board = board
+        self.rows = rows
+        self.cols = cols
         self.emptyspot = []
         for index in range(len(board)):
             if 0 in board[index]:
                 self.emptyspot = [board[index].index(0), index]
-        #print("emptyspot: " + str(self.emptyspot))
+        # print("emptyspot: " + str(self.emptyspot))
 
     def get_board(self):
         return self.board
@@ -46,10 +48,35 @@ class TilePuzzle(object):
 
         return False
 
-    def scramble(self, num_moves):
+
+
+    def scramble(self, num_moves):       
         for index in range(num_moves):
             self.perform_move(choice(["right", "left", "up", "down"]))
+        
+        puzzle_diff = self.solvable()
+        if (puzzle_diff['solvable']):
+            print(f"Solvable: {puzzle_diff['solvable']}  -  Inversions: {puzzle_diff['inversions']}")
 
+    # Basing these algorithms off of those found here -> https://www.geeksforgeeks.org/check-instance-8-puzzle-solvable/
+    # Updated to allow for larger puzzles using rows * columns
+    # tiles is a flattened array of the board.
+    def get_inversion_counts(self, tiles, r, c):
+        inversions = 0
+        empty_value = 0
+        for i in range(0, r*c):
+            for j in range(i+1, r*c):
+                if tiles[j] != empty_value and tiles[i] != empty_value and tiles[i] > tiles[j]:
+                    inversions += 1
+        return inversions
+
+    def solvable(self):
+        inversions = self.get_inversion_counts([j for sub in self.get_board() for j in sub], self.rows, self.cols)
+        return {
+            "inversions": inversions,
+            "solvable": (inversions % 2 == 0)
+        }
+    
     def is_solved(self):
         if self.board == create_tile_puzzle(len(self.board[0]), len(self.board)).get_board():
             return True
@@ -57,216 +84,76 @@ class TilePuzzle(object):
 
     def copy(self):
         """ This creates a DeepCopy of the board, then returns a new object with the copyed bord. """
-        return TilePuzzle([[n for n in self.board[x]] for x in range(len(self.board))])
+        return TilePuzzle([[n for n in self.board[x]] for x in range(len(self.board))], self.rows, self.cols)
 
 
-    def successors(self):
-        for index in ["up", "down", "left", "right"]:
-            newBord = TilePuzzle(self.copy().get_board())
-            newBord.perform_move(index)
-            yield (index, newBord)
+    def successors(self, moves=None ):
+        if moves is None:
+            for index in ["up", "down", "left", "right"]:
+                newBord = TilePuzzle(self.copy().get_board(), self.rows, self.cols)
+                newBord.perform_move(index)
+                yield (index, newBord)
+        else:
+            for index in ["up", "down", "left", "right"]:
+                newBord = TilePuzzle(self.copy().get_board(), self.rows, self.cols)
+                newBord.perform_move(index)
+                yield (index, newBord, moves+[index])
 
-    # Required
-    def find_solutions_bfs(self):
+    def find_solution_bfs(self):
         """
         Finds the solution to the puzzle using;
         Breadth First Search
         """
-        self.steps = []
-        self.visited = []
-        self.successorsFound = 1 # this starts on.
+        states_viewed = 0
+        state_queue = []
+        moves = []
 
-        goal = create_tile_puzzle(len(self.board), len(self.board[0])).get_board()
+        if (self.is_solved()):
+            yield moves
+        else:
+            for state in self.successors(moves):
+                state_queue.append(state)
 
-        def nextLevel(prevouse = ()):
-            succ = 0
-            #print("Origial: " + str(self.get_board()))
-            for moves, new_board in self.successors(): # Find the successors.
-                
-                # make sure they were not visited.  #Save when more than one goal if found
-                if new_board.get_board() not in self.visited or new_board.get_board() == goal: 
-                    #print("successors: " + str(moves) + "   "+ str(new_board.get_board()))
-                    
-                    succ = 1
-                    #print("Succ = " + str(succ))
 
-                    # Populete the lists.
-                    if len(prevouse) > 0:
-                        newnewlist = prevouse
-                        if type(newnewlist) == type(list()):
-                            newnewlist = prevouse[:]
-                            newnewlist.append(moves)
-
-                        else: # speciel case for the first itteration.
-                            newnewlist = [prevouse]
-                            newnewlist.append(moves)
-                        self.steps.append([newnewlist, new_board.get_board()])
-                    else:
-                        self.steps.append([[moves], new_board.get_board()])
-                    self.visited.append(new_board.get_board())
-                #else:
-                #    print("Already seen: " + str(moves) + "   "+ str(new_board.get_board()))
-            return succ
-
-        
-
-        def checkThem(index):
-            """
-            Check for all false in the steps list.
-            """
-            #print("Checking: " + str(create_tile_puzzle(len(self.board[0]), len(self.board)).get_board()))
-            #print("with: " + str(self.steps[index][1]))
-
-            # Return if an answer has been found in the list of posibilites
-            if create_tile_puzzle(len(self.board), len(self.board[0])).get_board() == self.steps[index][1]:
-                #print("DONE")
-                return self.steps[index][0]
+        for direction, board, prev_moves in state_queue:
+            states_viewed += 1
+            if (board.is_solved()):
+                print(f"States Viewed: {states_viewed}")
+                print(f"Move List:     {prev_moves}")
+                print(f"Total Moves:   {len(prev_moves)}")
+                yield prev_moves
             else:
-                return 0
-        #Special case for no moves
-        if goal == self.board:
-            yield []
-            return
+                for state in board.successors(prev_moves):
+                    state_queue.append(state)
 
-        # special case for only one move
-        nextLevel()
 
-        for index in range(len(self.steps)):
-            answer = checkThem(index)
-            if answer != 0: 
-                return answer
-
-        # Use a FOUND SUCCESSSER verable to know if i need to keep checking.
-        while self.successorsFound == 1:
-            self.successorsFound = 0
-            for index in range(len(self.steps)):
-                # Go through the steps list replacing them with the next height. adding nxn entries
-                    if len(self.steps[index]) < 3:
-                        # save the current board
-                        currentBoard = self.copy().get_board()
-                        
-                        self.board = self.steps[index][1] # Set the board
-                        #print("Origial Stored: " + str(self.steps[index][1]))
-                        #print("Origial After set: " + str(self.get_board()))
-                        
-
-                        succ = nextLevel(self.steps[index][0])
-                        self.steps[index].append(1)
-                        if succ == 1:
-                            self.successorsFound = 1
-                        #print("Succ = " + str(succ))
-                        #print("successorsFound = " + str(self.successorsFound))
-
-                        self.board = currentBoard
-            
-
-            for index in range(len(self.steps)): # only check what hasn't been checked before
-                answer = checkThem(index)
-                if answer != 0: 
-                    yield answer #list(dict.fromkeys()) # remove dup
-                    self.successorsFound = 0 #this stops the recursion, when answers are found at this level
-        return None
+    def iddfs_helper(self, limit, moves):
+        if limit == len(moves):
+            yield (moves, self)
+        else:
+            for (direction, new_board) in self.successors():
+                if (new_board.is_solved()):
+                    yield (moves + [direction], new_board)
+                else:
+                    for (updated_moves, config) in  new_board.iddfs_helper(limit, moves + [direction]):
+                        yield (updated_moves, config)
 
     # Required
-    def find_solutions_iddfs(self):
-        """
-        Finds the solution to the puzzle using;
-        Iterative deepenging search using the.
-        """
-        self.steps = []
-        self.visited = []
-        self.successorsFound = 1 # this starts on.
+    def find_solution_iddfs(self):
+        limit = 0
+        states_viewed = 0
+        found = False
 
-        goal = create_tile_puzzle(len(self.board), len(self.board[0])).get_board()
-
-        def nextLevel(prevouse = ()):
-            succ = 0
-            #print("Origial: " + str(self.get_board()))
-            for moves, new_board in self.successors(): # Find the successors.
-                
-                # make sure they were not visited.  #Save when more than one goal if found
-                if new_board.get_board() not in self.visited or new_board.get_board() == goal: 
-                    #print("successors: " + str(moves) + "   "+ str(new_board.get_board()))
-                    
-                    succ = 1
-                    #print("Succ = " + str(succ))
-
-                    # Populete the lists.
-                    if len(prevouse) > 0:
-                        newnewlist = prevouse
-                        if type(newnewlist) == type(list()):
-                            newnewlist = prevouse[:]
-                            newnewlist.append(moves)
-
-                        else: # speciel case for the first itteration.
-                            newnewlist = [prevouse]
-                            newnewlist.append(moves)
-                        self.steps.append([newnewlist, new_board.get_board()])
-                    else:
-                        self.steps.append([[moves], new_board.get_board()])
-                    self.visited.append(new_board.get_board())
-                #else:
-                #    print("Already seen: " + str(moves) + "   "+ str(new_board.get_board()))
-            return succ
-
+        while not found:
+            for (moves, config) in self.iddfs_helper(limit, []):
+                states_viewed += 1
+                if config.is_solved():
+                    print(f"States Viewed: {states_viewed}")
+                    print(f"Move List:     {moves}")
+                    print(f"Total Moves:   {len(moves)}")
+                    yield moves
+            limit += 1
         
-
-        def checkThem(index):
-            """
-            Check for all false in the steps list.
-            """
-            #print("Checking: " + str(create_tile_puzzle(len(self.board[0]), len(self.board)).get_board()))
-            #print("with: " + str(self.steps[index][1]))
-
-            # Return if an answer has been found in the list of posibilites
-            if create_tile_puzzle(len(self.board), len(self.board[0])).get_board() == self.steps[index][1]:
-                #print("DONE")
-                return self.steps[index][0]
-            else:
-                return 0
-        #Special case for no moves
-        if goal == self.board:
-            yield []
-            return
-
-        # special case for only one move
-        nextLevel()
-
-        for index in range(len(self.steps)):
-            answer = checkThem(index)
-            if answer != 0: 
-                return answer
-
-        # Use a FOUND SUCCESSSER verable to know if i need to keep checking.
-        while self.successorsFound == 1:
-            self.successorsFound = 0
-            for index in range(len(self.steps)):
-                # Go through the steps list replacing them with the next height. adding nxn entries
-                    if len(self.steps[index]) < 3:
-                        # save the current board
-                        currentBoard = self.copy().get_board()
-                        
-                        self.board = self.steps[index][1] # Set the board
-                        #print("Origial Stored: " + str(self.steps[index][1]))
-                        #print("Origial After set: " + str(self.get_board()))
-                        
-
-                        succ = nextLevel(self.steps[index][0])
-                        self.steps[index].append(1)
-                        if succ == 1:
-                            self.successorsFound = 1
-                        #print("Succ = " + str(succ))
-                        #print("successorsFound = " + str(self.successorsFound))
-
-                        self.board = currentBoard
-            
-
-            for index in range(len(self.steps)): # only check what hasn't been checked before
-                answer = checkThem(index)
-                if answer != 0: 
-                    yield answer #list(dict.fromkeys()) # remove dup
-                    self.successorsFound = 0 #this stops the recursion, when answers are found at this level
-        return None
 
     # Required
     def find_solution_a_star(self):
