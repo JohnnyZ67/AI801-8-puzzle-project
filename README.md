@@ -12,7 +12,7 @@ This code base is stored in GitHub and can be found [here](https://github.com/Jo
 ## Running locally
 With python installed you can run this code by running the puzzle_solver.py code and providing it the size of the puzzle table. An example command for your terminal can be seen below and will initiate a 3x3 8-puzzle:
 ```
-python puzzle_solver 3 3
+python puzzle_gui.py 3 3
 ```
 ### Heuristics and Algorithms
 The GUI offers multiple heuristics and brute force algorithms to choose to solve the 8-puzzle. First select 'Scramble' to randomize the board and then simply press the button to solve the puzzle with your desired algorithm.
