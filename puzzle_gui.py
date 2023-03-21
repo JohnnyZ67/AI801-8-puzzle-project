@@ -54,7 +54,7 @@ class Board(tkinter.Frame):
             for col in range(self.cols):
                 self.tiles[row][col].set_state(puzzle_board[row][col])
 
-    def animate_moves(self, moves, delay=100):
+    def animate_moves(self, moves, delay=150):
         if moves:
             def stage_1():
                 self.puzzle.perform_move(moves[0])

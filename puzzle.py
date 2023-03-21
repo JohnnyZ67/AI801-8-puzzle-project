@@ -80,6 +80,28 @@ class TilePuzzle(object):
         for i in range(num_moves):
             self.perform_move(random.choice(directions))
 
+        puzzle_diff = self.solvable()
+        print(f"Solvable: {puzzle_diff['solvable']}  -  Inversions: {puzzle_diff['inversions']}")
+
+    # Basing these algorithms off of those found here -> https://www.geeksforgeeks.org/check-instance-8-puzzle-solvable/
+    # Updated to allow for larger puzzles using rows * columns
+    # tiles is a flattened array of the board.
+    def get_inversion_counts(self, tiles, r, c):
+        inversions = 0
+        empty_value = 0
+        for i in range(0, r*c):
+            for j in range(i+1, r*c):
+                if tiles[j] != empty_value and tiles[i] != empty_value and tiles[i] > tiles[j]:
+                    inversions += 1
+        return inversions
+
+    def solvable(self):
+        inversions = self.get_inversion_counts([j for sub in self.get_board() for j in sub], self.r, self.c)
+        return {
+            "inversions": inversions,
+            "solvable": (inversions % 2 == 0)
+        }
+    
     def is_solved(self):
         solved = create_tile_puzzle(self.r, self.c)
         if self.board == solved.get_board():
