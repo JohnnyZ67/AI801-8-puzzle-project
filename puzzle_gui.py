@@ -1,6 +1,6 @@
 import sys
 import tkinter
-import puzzle_solver
+import puzzle
 
 class Tile(tkinter.Canvas):
 
@@ -72,7 +72,7 @@ class TilePuzzleGUI(tkinter.Frame):
 
         self.rows = rows
         self.cols = cols
-        self.puzzle = puzzle_solver.create_tile_puzzle(rows, cols)
+        self.puzzle = puzzle.create_tile_puzzle(rows, cols)
 
         self.board = Board(self, self.puzzle, rows, cols)
         self.board.pack(side=tkinter.LEFT, padx=1, pady=1)
@@ -88,8 +88,13 @@ class TilePuzzleGUI(tkinter.Frame):
             command=self.solve_iddfs_click).pack(fill=tkinter.X, padx=1, pady=1)
         tkinter.Button(menu, text="Solve Using BFS",
             command=self.solve_bfs_click).pack(fill=tkinter.X, padx=1, pady=1)
-        tkinter.Button(menu, text="Solve Using A*",
-            command=self.solve_a_star_click).pack(fill=tkinter.X, padx=1, pady=1)
+        tkinter.Button(menu, text="Solve Using A* - Manhattan",
+            command=lambda: self.solve_a_star_click("manhattan")).pack(fill=tkinter.X, padx=1, pady=1)
+        tkinter.Button(menu, text="Solve Using A* - Euclidean",
+            command=lambda: self.solve_a_star_click("euclidean")).pack(fill=tkinter.X, padx=1, pady=1)
+        tkinter.Button(menu, text="Solve Using A* - Chebyshev",
+            command=lambda: self.solve_a_star_click("chebyshev")).pack(fill=tkinter.X, padx=1, pady=1)
+        
 
         menu.pack(side=tkinter.RIGHT)
 
@@ -103,8 +108,8 @@ class TilePuzzleGUI(tkinter.Frame):
     def solve_bfs_click(self):
         self.board.animate_moves(next(self.puzzle.find_solution_bfs()))
 
-    def solve_a_star_click(self):
-        self.board.animate_moves(self.puzzle.find_solution_a_star())
+    def solve_a_star_click(self, algorithm):
+        self.board.animate_moves(self.puzzle.find_solution_a_star(algorithm))
 
 if __name__ == "__main__":
     root = tkinter.Tk()
