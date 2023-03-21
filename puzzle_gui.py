@@ -7,7 +7,7 @@ class Tile(tkinter.Canvas):
     BACKGROUND_NORMAL = "white"
     BACKGROUND_EMPTY = "black"
 
-    def __init__(self, master, tile, size=60):
+    def __init__(self, master, tile, size=100):
         tkinter.Canvas.__init__(self, master, height=size, width=size,
             highlightthickness=2, highlightbackground="black")
         self.text = self.create_text(size / 2, size / 2, font=("Arial", 24))
@@ -99,7 +99,11 @@ class TilePuzzleGUI(tkinter.Frame):
         menu.pack(side=tkinter.RIGHT)
 
     def scramble_click(self):
-        self.puzzle.scramble(self.rows * self.cols * 2)
+        inversions = 0
+
+        while inversions == 0:
+            inversions = self.puzzle.scramble(self.rows * self.cols * 2)['inversions']
+
         self.board.update_tiles()
 
     def solve_iddfs_click(self):

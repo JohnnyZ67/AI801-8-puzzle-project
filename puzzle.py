@@ -79,9 +79,11 @@ class TilePuzzle(object):
         directions = ["up", "down", "left", "right"]
         for i in range(num_moves):
             self.perform_move(random.choice(directions))
-
+        
         puzzle_diff = self.solvable()
         print(f"Solvable: {puzzle_diff['solvable']}  -  Inversions: {puzzle_diff['inversions']}")
+        return puzzle_diff
+        
 
     # Basing these algorithms off of those found here -> https://www.geeksforgeeks.org/check-instance-8-puzzle-solvable/
     # Updated to allow for larger puzzles using rows * columns
