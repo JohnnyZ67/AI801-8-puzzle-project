@@ -151,7 +151,7 @@ class TilePuzzle(object):
             if (board.is_solved()):
                 print(f"States Viewed: {states_viewed}")
                 print(f"Move List:     {prev_moves}")
-                print(f"Total Moves:   {len(prev_moves)}")
+                print(f"Total Moves:   {len(prev_moves)}\n")
                 yield prev_moves
             else:
                 for state in board.successors(prev_moves):
@@ -181,7 +181,7 @@ class TilePuzzle(object):
                 if config.is_solved():
                     print(f"States Viewed: {states_viewed}")
                     print(f"Move List:     {moves}")
-                    print(f"Total Moves:   {len(moves)}")
+                    print(f"Total Moves:   {len(moves)}\n")
                     yield moves
             limit += 1
     # Required
@@ -199,7 +199,7 @@ class TilePuzzle(object):
             if curr.board == self.sol:
                 print(f"States Viewed: {states_viewed}")
                 print(f"Move List:     {curr.route}")
-                print(f"Total Moves:   {len(curr.route)}")
+                print(f"Total Moves:   {len(curr.route)}\n")
                 return curr.route
             open_set.remove(curr)
 
@@ -210,7 +210,7 @@ class TilePuzzle(object):
                     puzzle.route = curr.route + [move]
                     print(f"States Viewed: {states_viewed}")
                     print(f"Move List:     {puzzle.route}")
-                    print(f"Total Moves:   {len(puzzle.route)}")
+                    print(f"Total Moves:   {len(puzzle.route)}\n")
                     return puzzle.route
 
                 if algorithm == "chebyshev":
