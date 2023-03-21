@@ -1,13 +1,13 @@
 import sys
 import tkinter
-import puzzle_solver
+import puzzle
 
 class Tile(tkinter.Canvas):
 
     BACKGROUND_NORMAL = "white"
     BACKGROUND_EMPTY = "black"
 
-    def __init__(self, master, tile, size=60):
+    def __init__(self, master, tile, size=100):
         tkinter.Canvas.__init__(self, master, height=size, width=size,
             highlightthickness=2, highlightbackground="black")
         self.text = self.create_text(size / 2, size / 2, font=("Arial", 24))
@@ -54,7 +54,7 @@ class Board(tkinter.Frame):
             for col in range(self.cols):
                 self.tiles[row][col].set_state(puzzle_board[row][col])
 
-    def animate_moves(self, moves, delay=100):
+    def animate_moves(self, moves, delay=150):
         if moves:
             def stage_1():
                 self.puzzle.perform_move(moves[0])
@@ -72,7 +72,7 @@ class TilePuzzleGUI(tkinter.Frame):
 
         self.rows = rows
         self.cols = cols
-        self.puzzle = puzzle_solver.create_tile_puzzle(rows, cols)
+        self.puzzle = puzzle.create_tile_puzzle(rows, cols)
 
         self.board = Board(self, self.puzzle, rows, cols)
         self.board.pack(side=tkinter.LEFT, padx=1, pady=1)
@@ -88,13 +88,22 @@ class TilePuzzleGUI(tkinter.Frame):
             command=self.solve_iddfs_click).pack(fill=tkinter.X, padx=1, pady=1)
         tkinter.Button(menu, text="Solve Using BFS",
             command=self.solve_bfs_click).pack(fill=tkinter.X, padx=1, pady=1)
-        tkinter.Button(menu, text="Solve Using A*",
-            command=self.solve_a_star_click).pack(fill=tkinter.X, padx=1, pady=1)
+        tkinter.Button(menu, text="Solve Using A* - Manhattan",
+            command=lambda: self.solve_a_star_click("manhattan")).pack(fill=tkinter.X, padx=1, pady=1)
+        tkinter.Button(menu, text="Solve Using A* - Euclidean",
+            command=lambda: self.solve_a_star_click("euclidean")).pack(fill=tkinter.X, padx=1, pady=1)
+        tkinter.Button(menu, text="Solve Using A* - Chebyshev",
+            command=lambda: self.solve_a_star_click("chebyshev")).pack(fill=tkinter.X, padx=1, pady=1)
+        
 
         menu.pack(side=tkinter.RIGHT)
 
     def scramble_click(self):
-        self.puzzle.scramble(self.rows * self.cols * 2)
+        inversions = 0
+
+        while inversions == 0:
+            inversions = self.puzzle.scramble(self.rows * self.cols * 2)['inversions']
+
         self.board.update_tiles()
 
     def solve_iddfs_click(self):
@@ -103,8 +112,8 @@ class TilePuzzleGUI(tkinter.Frame):
     def solve_bfs_click(self):
         self.board.animate_moves(next(self.puzzle.find_solution_bfs()))
 
-    def solve_a_star_click(self):
-        self.board.animate_moves(self.puzzle.find_solution_a_star())
+    def solve_a_star_click(self, algorithm):
+        self.board.animate_moves(self.puzzle.find_solution_a_star(algorithm))
 
 if __name__ == "__main__":
     root = tkinter.Tk()

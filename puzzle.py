@@ -1,22 +1,8 @@
-############################################################
-# CIS 521: Homework 3
-############################################################
-
-student_name = "Ricky Rajani"
-
-############################################################
-# Imports
-############################################################
-
 import random
 import copy
 import itertools
 import queue as Q
 import math
-
-############################################################
-# Section 1: Tile Puzzle
-############################################################
 
 
 def create_tile_puzzle(rows, cols):
@@ -93,7 +79,31 @@ class TilePuzzle(object):
         directions = ["up", "down", "left", "right"]
         for i in range(num_moves):
             self.perform_move(random.choice(directions))
+        
+        puzzle_diff = self.solvable()
+        print(f"Solvable: {puzzle_diff['solvable']}  -  Inversions: {puzzle_diff['inversions']}")
+        return puzzle_diff
+        
 
+    # Basing these algorithms off of those found here -> https://www.geeksforgeeks.org/check-instance-8-puzzle-solvable/
+    # Updated to allow for larger puzzles using rows * columns
+    # tiles is a flattened array of the board.
+    def get_inversion_counts(self, tiles, r, c):
+        inversions = 0
+        empty_value = 0
+        for i in range(0, r*c):
+            for j in range(i+1, r*c):
+                if tiles[j] != empty_value and tiles[i] != empty_value and tiles[i] > tiles[j]:
+                    inversions += 1
+        return inversions
+
+    def solvable(self):
+        inversions = self.get_inversion_counts([j for sub in self.get_board() for j in sub], self.r, self.c)
+        return {
+            "inversions": inversions,
+            "solvable": (inversions % 2 == 0)
+        }
+    
     def is_solved(self):
         solved = create_tile_puzzle(self.r, self.c)
         if self.board == solved.get_board():
@@ -103,19 +113,33 @@ class TilePuzzle(object):
     def copy(self):
         return TilePuzzle(copy.deepcopy(self.board))
 
-    def successors(self):
-        p = self.copy()
-        if p.perform_move("up"):
-            yield ("up", p)
-        p = self.copy()
-        if p.perform_move("down"):
-            yield ("down", p)
-        p = self.copy()
-        if p.perform_move("left"):
-            yield ("left", p)
-        p = self.copy()
-        if p.perform_move("right"):
-            yield ("right", p)
+    def successors(self, moves=None ):
+        if moves is None:
+            p = self.copy()
+            if p.perform_move("up"):
+                yield ("up", p)
+            p = self.copy()
+            if p.perform_move("down"):
+                yield ("down", p)
+            p = self.copy()
+            if p.perform_move("left"):
+                yield ("left", p)
+            p = self.copy()
+            if p.perform_move("right"):
+                yield ("right", p)
+        else:
+            p = self.copy()
+            if p.perform_move("up"):
+                yield ("up", p, moves+["up"])
+            p = self.copy()
+            if p.perform_move("down"):
+                yield ("down", p, moves+["down"])
+            p = self.copy()
+            if p.perform_move("left"):
+                yield ("left", p, moves+["left"])
+            p = self.copy()
+            if p.perform_move("right"):
+                yield ("right", p, moves+["right"])
 
     def solved_board(self):
         board = []
@@ -130,26 +154,63 @@ class TilePuzzle(object):
         board[self.r - 1][self.c - 1] = 0
         return board
 
-     
-    def find_solutions_iddfs(self):
-        is_found_solution = False
-        limit = 0
-        while not is_found_solution:
-            for move in self.iddfs_helper(limit, []):
-                yield move
-                is_found_solution = True
-            limit += 1
+    def find_solution_bfs(self):
+        """
+        Finds the solution to the puzzle using;
+        Breadth First Search
+        """
+        states_viewed = 0
+        state_queue = []
+        moves = []
 
-    def iddfs_helper(self, limit, route):
-        if self.board == self.sol:
-            yield route
-        elif len(route) < limit:
-            for move, puzzle in self.successors():
-                for sol in puzzle.iddfs_helper(limit, route + [move]):
-                    yield sol
+        if (self.is_solved()):
+            yield moves
+        else:
+            for state in self.successors(moves):
+                state_queue.append(state)
+
+
+        for direction, board, prev_moves in state_queue:
+            states_viewed += 1
+            if (board.is_solved()):
+                print(f"States Viewed: {states_viewed}")
+                print(f"Move List:     {prev_moves}")
+                print(f"Total Moves:   {len(prev_moves)}\n")
+                yield prev_moves
+            else:
+                for state in board.successors(prev_moves):
+                    state_queue.append(state)
+
+
+    def iddfs_helper(self, limit, moves):
+        if limit == len(moves):
+            yield (moves, self)
+        else:
+            for (direction, new_board) in self.successors():
+                if (new_board.is_solved()):
+                    yield (moves + [direction], new_board)
+                else:
+                    for (updated_moves, config) in  new_board.iddfs_helper(limit, moves + [direction]):
+                        yield (updated_moves, config)
 
     # Required
-    def find_solution_a_star(self):
+    def find_solution_iddfs(self):
+        limit = 0
+        states_viewed = 0
+        found = False
+
+        while not found:
+            for (moves, config) in self.iddfs_helper(limit, []):
+                states_viewed += 1
+                if config.is_solved():
+                    print(f"States Viewed: {states_viewed}")
+                    print(f"Move List:     {moves}")
+                    print(f"Total Moves:   {len(moves)}\n")
+                    yield moves
+            limit += 1
+    # Required
+    def find_solution_a_star(self, algorithm = "chebyshev"):
+        states_viewed=0
         open_set = set()
         closed_set = set()
         open_set.add(self)
@@ -160,17 +221,34 @@ class TilePuzzle(object):
             curr = min(open_set, key=lambda x: x.f)
 
             if curr.board == self.sol:
+                print(f"States Viewed: {states_viewed}")
+                print(f"Move List:     {curr.route}")
+                print(f"Total Moves:   {len(curr.route)}\n")
                 return curr.route
             open_set.remove(curr)
 
             for move, puzzle in curr.successors():
+                states_viewed += 1
+
                 if puzzle.board == self.sol:
                     puzzle.route = curr.route + [move]
+                    print(f"States Viewed: {states_viewed}")
+                    print(f"Move List:     {puzzle.route}")
+                    print(f"Total Moves:   {len(puzzle.route)}\n")
                     return puzzle.route
 
-                puzzle.g = curr.g + curr.chebyshev(puzzle.board)
-                puzzle.h = puzzle.chebyshev(self.sol)
-                puzzle.f = puzzle.g + puzzle.h
+                if algorithm == "chebyshev":
+                    puzzle.g = curr.g + curr.chebyshev(puzzle.board)
+                    puzzle.h = puzzle.chebyshev(self.sol)
+                    puzzle.f = puzzle.g + puzzle.h
+                elif algorithm == "manhattan":
+                    puzzle.g = curr.g + curr.manhattan(puzzle.board)
+                    puzzle.h = puzzle.manhattan(self.sol)
+                    puzzle.f = puzzle.g + puzzle.h
+                elif algorithm == "euclidean":
+                    puzzle.g = curr.g + curr.euclidean(puzzle.board)
+                    puzzle.h = puzzle.euclidean(self.sol)
+                    puzzle.f = puzzle.g + puzzle.h
 
                 go = True
                 for board in open_set:
@@ -236,351 +314,3 @@ class TilePuzzle(object):
                 pos2 = pos[a]
                 total += maximum(abs(x - pos2[0]),abs(y - pos2[1]))
         return math.sqrt(total)
-
-############################################################
-# Section 2: Grid Navigation
-############################################################
-
-
-class GridPuzzle(object):
-
-    def __init__(self, loc):
-        self.loc = loc
-        self.g = 0
-        self.h = 0
-        self.f = 0
-        self.route = []
-
-    def successors(self, scene):
-        x, y = self.loc
-        r = len(scene) - 1
-        c = len(scene[0]) - 1
-        if x > 0:
-            if not scene[x - 1][y]:
-                yield GridPuzzle((x - 1, y))  # up
-        if y > 0:
-            if not scene[x][y - 1]:
-                yield GridPuzzle((x, y - 1))  # left
-        if x < r:
-            if not scene[x + 1][y]:
-                yield GridPuzzle((x + 1, y))  # down
-        if y < c:
-            if not scene[x][y + 1]:
-                yield GridPuzzle((x, y + 1))  # right
-        if x < r and y < c:
-            if not scene[x + 1][y + 1]:
-                yield GridPuzzle((x + 1, y + 1))  # down-right
-        if x < r and y > 0:
-            if not scene[x + 1][y - 1]:
-                yield GridPuzzle((x + 1, y - 1))  # down-left
-        if x > 0 and y < c:
-            if not scene[x - 1][y + 1]:
-                yield GridPuzzle((x - 1, y + 1))  # up-right
-        if x > 0 and y > 0:
-            if not scene[x - 1][y - 1]:
-                yield GridPuzzle((x - 1, y - 1))  # up-left
-
-    def heuristic(self, b):
-        x1, y1 = self.loc
-        x2, y2 = b
-        return abs(x1 - x2) + abs(y1 - y2)
-
-
-def find_path(start, goal, scene):
-    open_set = set()
-    closed_set = set()
-    a = GridPuzzle(start)
-    open_set.add(a)
-    a.h = a.heuristic(goal)
-    a.route = [start]
-
-    while open_set:
-        curr = min(open_set, key=lambda x: x.f)
-
-        if curr.loc == goal:
-            return curr.route
-        open_set.remove(curr)
-
-        for point in curr.successors(scene):
-            if point.loc == goal:
-                point.route = curr.route + [point.loc]
-                return point.route
-
-            point.g = curr.g + curr.heuristic(point.loc)
-            point.h = point.heuristic(goal)
-            point.f = point.g + point.h
-
-            go = True
-            for loc in open_set:
-                if loc.loc == point.loc and loc.f < point.f:
-                    go = False
-                    continue
-            for loc in closed_set:
-                if loc.loc == point.loc and loc.f < point.f:
-                    go = False
-                    continue
-            if go:
-                open_set.add(point)
-                point.route = curr.route + [point.loc]
-
-        closed_set.add(curr)
-
-
-############################################################
-# Section 3: Linear Disk Movement, Revisited
-############################################################
-class LinearDiskMovement(object):
-
-    def __init__(self, n, length, disks):
-        self.n = n
-        self.length = length
-        self.disks = list(disks)
-        self.g = 0
-        self.h = 0
-        self.f = 0
-        self.route = []
-
-    def successors(self):
-        for i in range(len(self.disks)):
-            if self.disks[i]:
-                if i + 1 < self.length:
-                    if self.disks[i + 1] == 0:
-                        replace = list(self.disks)
-                        disk = replace[i]
-                        replace[i] = 0
-                        replace[i + 1] = disk
-                        yield ((i, i + 1), LinearDiskMovement(self.n, self.length, replace))
-
-                if i + 2 < self.length:
-                    if self.disks[i + 2] == 0 and self.disks[i + 1] != 0:
-                        replace = list(self.disks)
-                        disk = replace[i]
-                        replace[i] = 0
-                        replace[i + 2] = disk
-                        yield ((i, i + 2), LinearDiskMovement(self.n, self.length, replace))
-
-                if i - 1 >= 0:
-                    if self.disks[i - 1] == 0:
-                        replace = list(self.disks)
-                        disk = replace[i]
-                        replace[i] = 0
-                        replace[i - 1] = disk
-                        yield ((i, i - 1), LinearDiskMovement(self.n, self.length, replace))
-
-                if i - 2 >= 0:
-                    if self.disks[i - 2] == 0 and self.disks[i - 1] != 0:
-                        replace = list(self.disks)
-                        disk = replace[i]
-                        replace[i] = 0
-                        replace[i - 2] = disk
-                        yield ((i, i - 2), LinearDiskMovement(self.n, self.length, replace))
-
-    def heuristic(self, b):
-        pos = {}
-        for i, x in enumerate(b):
-            pos[x] = i
-
-        total = 0
-        for i, x in enumerate(self.disks):
-            total += abs(i - pos[x])
-
-        return total
-
-
-def solve_distinct_disks(length, n):
-    start = [x + 1 for x in range(n)]
-    for x in range(length - n):
-        start.append(0)
-    goal = list(reversed(copy.deepcopy(start)))
-
-    if start == goal:
-        return [()]
-
-    open_set = set()
-    a = LinearDiskMovement(n, length, start)
-    open_set.add(a)
-
-    closed_set = set()
-    a.h = a.heuristic(goal)
-
-    while open_set:
-        curr = min(open_set, key=lambda ldm: ldm.f)
-
-        if curr.disks == goal:
-            return curr.route
-        open_set.remove(curr)
-
-        for move, disk in curr.successors():
-            if disk.disks == goal:
-                disk.route = curr.route + [move]
-                return disk.route
-
-            disk.g = curr.g + curr.heuristic(disk.disks)
-            disk.h = disk.heuristic(goal)
-            disk.f = disk.g + disk.h
-
-            go = True
-            for loc in open_set:
-                if loc.disks == disk.disks and loc.f < disk.f:
-                    go = False
-                    continue
-            for loc in closed_set:
-                if loc.disks == disk.disks and loc.f < disk.f:
-                    go = False
-                    continue
-            if go:
-                open_set.add(disk)
-                disk.route = curr.route + [move]
-
-        closed_set.add(curr)
-
-############################################################
-# Section 4: Dominoes Game
-############################################################
-
-
-def create_dominoes_game(rows, cols):
-    board = [[False for x in range(cols)] for y in range(rows)]
-    return DominoesGame(board)
-
-
-class DominoesGame(object):
-
-    # Required
-    def __init__(self, board):
-        self.board = board
-        self.r = len(board)
-        self.c = len(board[0])
-
-    def get_board(self):
-        return self.board
-
-    def reset(self):
-        self.board = [[False for x in range(self.c)] for y in range(self.r)]
-
-    def is_legal_move(self, row, col, vertical):
-        if vertical:
-            if row == self.r - 1:
-                return False
-            if self.board[row + 1][col] or self.board[row][col]:
-                return False
-        else:
-            if col == self.c - 1:
-                return False
-            if self.board[row][col + 1] or self.board[row][col]:
-                return False
-        return True
-
-    def legal_moves(self, vertical):
-        for x in range(self.r):
-            for y in range(self.c):
-                if self.is_legal_move(x, y, vertical):
-                    yield (x, y)
-
-    def perform_move(self, row, col, vertical):
-        if self.is_legal_move(row, col, vertical):
-            if vertical:
-                self.board[row + 1][col] = True
-            else:
-                self.board[row][col + 1] = True
-            self.board[row][col] = True
-
-    def game_over(self, vertical):
-        if list(self.legal_moves(vertical)):
-            return False
-        return True
-
-    def copy(self):
-        return DominoesGame(copy.deepcopy(self.board))
-
-    def successors(self, vertical):
-        for x, y in list(self.legal_moves(vertical)):
-            g = self.copy()
-            g.perform_move(x, y, vertical)
-            yield ((x, y), g)
-
-    def get_random_move(self, vertical):
-        x = list(self.legal_moves(vertical))
-        return random.choice(x)
-
-    # Required
-    def get_best_move(self, vertical, limit):
-        return self.max_value(-float('inf'), float('inf'), None, vertical, limit)
-
-    def max_value(self, alpha, beta, m, vertical, limit):
-        l = list(self.successors(vertical))
-        o = list(self.successors(not vertical))
-
-        if limit == 0 or self.game_over(vertical):
-            return m, len(l) - len(o), 1
-
-        v = -float('inf')
-        s = 0
-        curr_move = m
-        for pos, child in l:
-            move, temp, cnt = child.min_value(alpha, beta, pos, not vertical, limit - 1)
-            s += cnt
-            if temp > v:
-                v = temp
-                curr_move = pos
-            if v >= beta:
-                return curr_move, v, s
-            alpha = max(alpha, v)
-
-        return curr_move, v, s
-
-    def min_value(self, alpha, beta, m, vertical, limit):
-        l = list(self.successors(vertical))
-        o = list(self.successors(not vertical))
-
-        if limit == 0 or self.game_over(vertical):
-            return m, len(o) - len(l), 1
-
-        v = float('inf')
-        s = 0
-        curr_move = m
-        for pos, child in l:
-            move, temp, cnt = child.max_value(alpha, beta, pos, not vertical, limit - 1)
-            s += cnt
-            if temp < v:
-                v = temp
-                curr_move = pos
-            if v <= alpha:
-                return curr_move, v, s
-            beta = min(beta, v)
-
-        return curr_move, v, s
-
-
-
-b = [[4,1,2],[0,5,3],[7,8,6]]
-p = TilePuzzle(b)
-solutions = p.find_solutions_iddfs()
-print(list(solutions))
-"""
-b = [[False] * 3 for i in range(3)]
-g = DominoesGame(b)
-print(g.get_best_move(True, 1))
-print(g.get_best_move(True, 2))
-b = [[False] * 3 for i in range(3)]
-g = DominoesGame(b)
-g.perform_move(0, 1, True)
-print(g.get_best_move(False, 1))
-print(g.get_best_move(False, 2))
-"""
-############################################################
-# Section 5: Feedback
-############################################################
-
-feedback_question_1 = """
-26 Hours
-"""
-
-feedback_question_2 = """
-IDDFS and Min value, yes
-"""
-
-feedback_question_3 = """
-None. make the assignment a group project. Or since we alllredy created helper
-fuctions for all the other programs, provide them complete so we dont have to do buisy work.
-"""
