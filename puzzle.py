@@ -116,6 +116,7 @@ class TilePuzzle(object):
             p = self.copy()
             if p.perform_move("right"):
                 yield ("right", p, moves+["right"])
+
     def solved_board(self):
         board = []
         new = []
@@ -185,6 +186,7 @@ class TilePuzzle(object):
             limit += 1
     # Required
     def find_solution_a_star(self, algorithm = "chebyshev"):
+        states_viewed=0
         open_set = set()
         closed_set = set()
         open_set.add(self)
@@ -195,12 +197,20 @@ class TilePuzzle(object):
             curr = min(open_set, key=lambda x: x.f)
 
             if curr.board == self.sol:
+                print(f"States Viewed: {states_viewed}")
+                print(f"Move List:     {curr.route}")
+                print(f"Total Moves:   {len(curr.route)}")
                 return curr.route
             open_set.remove(curr)
 
             for move, puzzle in curr.successors():
+                states_viewed += 1
+
                 if puzzle.board == self.sol:
                     puzzle.route = curr.route + [move]
+                    print(f"States Viewed: {states_viewed}")
+                    print(f"Move List:     {puzzle.route}")
+                    print(f"Total Moves:   {len(puzzle.route)}")
                     return puzzle.route
 
                 if algorithm == "chebyshev":
