@@ -3,9 +3,10 @@ import copy
 import itertools
 import queue as Q
 import math
+from datetime import datetime, timedelta
 
 
-def create_tile_puzzle(rows, cols):
+def create_tile_puzzle(rows, cols, timeout=20):
     board = []
     new = []
     cnt = 1
@@ -17,12 +18,12 @@ def create_tile_puzzle(rows, cols):
         new = []
     board[rows - 1][cols - 1] = 0
 
-    return TilePuzzle(board)
+    return TilePuzzle(board, timeout)
 
 
 class TilePuzzle(object):
     
-    def __init__(self, board):
+    def __init__(self, board, timeout):
         self.board = board
         self.r = len(board)
         self.c = len(board[0])
@@ -35,6 +36,7 @@ class TilePuzzle(object):
         self.f = 0
         self.g = 0
         self.route = []
+        self.timeout = timeout
 
     def get_board(self):
         return self.board
@@ -81,7 +83,6 @@ class TilePuzzle(object):
             self.perform_move(random.choice(directions))
         
         puzzle_diff = self.solvable()
-        print(f"Solvable: {puzzle_diff['solvable']}  -  Inversions: {puzzle_diff['inversions']}")
         return puzzle_diff
         
 
@@ -111,7 +112,7 @@ class TilePuzzle(object):
         return False
 
     def copy(self):
-        return TilePuzzle(copy.deepcopy(self.board))
+        return TilePuzzle(copy.deepcopy(self.board), self.timeout)
 
     def successors(self, moves=None ):
         if moves is None:
@@ -162,9 +163,11 @@ class TilePuzzle(object):
         states_viewed = 0
         state_queue = []
         moves = []
+        time_to_live = datetime.now() + timedelta(seconds=self.timeout)
+        time_start = datetime.now()
 
         if (self.is_solved()):
-            yield moves
+            return {"moves": moves, "states_viewed":states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
         else:
             for state in self.successors(moves):
                 state_queue.append(state)
@@ -173,10 +176,9 @@ class TilePuzzle(object):
         for direction, board, prev_moves in state_queue:
             states_viewed += 1
             if (board.is_solved()):
-                print(f"States Viewed: {states_viewed}")
-                print(f"Move List:     {prev_moves}")
-                print(f"Total Moves:   {len(prev_moves)}\n")
-                yield prev_moves
+                return {"moves": prev_moves, "states_viewed":states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
+            elif datetime.now() > time_to_live:
+                return {"moves": [], "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
             else:
                 for state in board.successors(prev_moves):
                     state_queue.append(state)
@@ -198,15 +200,16 @@ class TilePuzzle(object):
         limit = 0
         states_viewed = 0
         found = False
+        time_to_live = datetime.now() + timedelta(seconds=self.timeout)
+        time_start = datetime.now()
 
         while not found:
             for (moves, config) in self.iddfs_helper(limit, []):
-                states_viewed += 1
                 if config.is_solved():
-                    print(f"States Viewed: {states_viewed}")
-                    print(f"Move List:     {moves}")
-                    print(f"Total Moves:   {len(moves)}\n")
-                    yield moves
+                    return {"moves": moves, "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
+                elif datetime.now() > time_to_live:
+                    return {"moves": [], "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
+                states_viewed += 1
             limit += 1
     # Required
     def find_solution_a_star(self, algorithm = "chebyshev"):
@@ -216,15 +219,16 @@ class TilePuzzle(object):
         open_set.add(self)
         self.h = self.chebyshev(self.sol)
         self.route = []
+        time_to_live = datetime.now() + timedelta(seconds=self.timeout)
+        time_start = datetime.now()
 
         while open_set:
             curr = min(open_set, key=lambda x: x.f)
 
             if curr.board == self.sol:
-                print(f"States Viewed: {states_viewed}")
-                print(f"Move List:     {curr.route}")
-                print(f"Total Moves:   {len(curr.route)}\n")
-                return curr.route
+                return {"moves": curr.route, "states_viewed":states_viewed}
+            elif datetime.now() > time_to_live:
+                    return {"moves": [], "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
             open_set.remove(curr)
 
             for move, puzzle in curr.successors():
@@ -232,10 +236,9 @@ class TilePuzzle(object):
 
                 if puzzle.board == self.sol:
                     puzzle.route = curr.route + [move]
-                    print(f"States Viewed: {states_viewed}")
-                    print(f"Move List:     {puzzle.route}")
-                    print(f"Total Moves:   {len(puzzle.route)}\n")
-                    return puzzle.route
+                    return {"moves":puzzle.route, "states_viewed":states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
+                elif datetime.now() > time_to_live:
+                    return {"moves": [], "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
 
                 if algorithm == "chebyshev":
                     puzzle.g = curr.g + curr.chebyshev(puzzle.board)
