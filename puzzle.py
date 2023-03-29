@@ -3,9 +3,10 @@ import copy
 import itertools
 import queue as Q
 import math
+from datetime import datetime, timedelta
 
 
-def create_tile_puzzle(rows, cols):
+def create_tile_puzzle(rows, cols, timeout=20):
     board = []
     new = []
     cnt = 1
@@ -17,12 +18,12 @@ def create_tile_puzzle(rows, cols):
         new = []
     board[rows - 1][cols - 1] = 0
 
-    return TilePuzzle(board)
+    return TilePuzzle(board, timeout)
 
 
 class TilePuzzle(object):
     
-    def __init__(self, board):
+    def __init__(self, board, timeout):
         self.board = board
         self.r = len(board)
         self.c = len(board[0])
@@ -35,6 +36,7 @@ class TilePuzzle(object):
         self.f = 0
         self.g = 0
         self.route = []
+        self.timeout = timeout
 
     def get_board(self):
         return self.board
@@ -81,7 +83,6 @@ class TilePuzzle(object):
             self.perform_move(random.choice(directions))
         
         puzzle_diff = self.solvable()
-        print(f"Solvable: {puzzle_diff['solvable']}  -  Inversions: {puzzle_diff['inversions']}")
         return puzzle_diff
         
 
@@ -111,7 +112,7 @@ class TilePuzzle(object):
         return False
 
     def copy(self):
-        return TilePuzzle(copy.deepcopy(self.board))
+        return TilePuzzle(copy.deepcopy(self.board), self.timeout)
 
     def successors(self, moves=None ):
         if moves is None:
@@ -154,6 +155,7 @@ class TilePuzzle(object):
         board[self.r - 1][self.c - 1] = 0
         return board
 
+    ## BFS
     def find_solution_bfs(self):
         """
         Finds the solution to the puzzle using;
@@ -162,9 +164,11 @@ class TilePuzzle(object):
         states_viewed = 0
         state_queue = []
         moves = []
+        time_to_live = datetime.now() + timedelta(seconds=self.timeout)
+        time_start = datetime.now()
 
         if (self.is_solved()):
-            yield moves
+            return {"moves": moves, "states_viewed":states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
         else:
             for state in self.successors(moves):
                 state_queue.append(state)
@@ -173,10 +177,9 @@ class TilePuzzle(object):
         for direction, board, prev_moves in state_queue:
             states_viewed += 1
             if (board.is_solved()):
-                print(f"States Viewed: {states_viewed}")
-                print(f"Move List:     {prev_moves}")
-                print(f"Total Moves:   {len(prev_moves)}\n")
-                yield prev_moves
+                return {"moves": prev_moves, "states_viewed":states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
+            elif datetime.now() > time_to_live:
+                return {"moves": [], "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
             else:
                 for state in board.successors(prev_moves):
                     state_queue.append(state)
@@ -193,22 +196,24 @@ class TilePuzzle(object):
                     for (updated_moves, config) in  new_board.iddfs_helper(limit, moves + [direction]):
                         yield (updated_moves, config)
 
-    # Required
+    ## IDDFS Base Method
     def find_solution_iddfs(self):
         limit = 0
         states_viewed = 0
         found = False
+        time_to_live = datetime.now() + timedelta(seconds=self.timeout)
+        time_start = datetime.now()
 
         while not found:
             for (moves, config) in self.iddfs_helper(limit, []):
-                states_viewed += 1
                 if config.is_solved():
-                    print(f"States Viewed: {states_viewed}")
-                    print(f"Move List:     {moves}")
-                    print(f"Total Moves:   {len(moves)}\n")
-                    yield moves
+                    return {"moves": moves, "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
+                elif datetime.now() > time_to_live:
+                    return {"moves": [], "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
+                states_viewed += 1
             limit += 1
-    # Required
+
+    ## A* Base algorithm
     def find_solution_a_star(self, algorithm = "chebyshev"):
         states_viewed=0
         open_set = set()
@@ -216,15 +221,16 @@ class TilePuzzle(object):
         open_set.add(self)
         self.h = self.chebyshev(self.sol)
         self.route = []
+        time_to_live = datetime.now() + timedelta(seconds=self.timeout)
+        time_start = datetime.now()
 
         while open_set:
             curr = min(open_set, key=lambda x: x.f)
 
             if curr.board == self.sol:
-                print(f"States Viewed: {states_viewed}")
-                print(f"Move List:     {curr.route}")
-                print(f"Total Moves:   {len(curr.route)}\n")
-                return curr.route
+                return {"moves": curr.route, "states_viewed":states_viewed}
+            elif datetime.now() > time_to_live:
+                    return {"moves": [], "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
             open_set.remove(curr)
 
             for move, puzzle in curr.successors():
@@ -232,10 +238,9 @@ class TilePuzzle(object):
 
                 if puzzle.board == self.sol:
                     puzzle.route = curr.route + [move]
-                    print(f"States Viewed: {states_viewed}")
-                    print(f"Move List:     {puzzle.route}")
-                    print(f"Total Moves:   {len(puzzle.route)}\n")
-                    return puzzle.route
+                    return {"moves":puzzle.route, "states_viewed":states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
+                elif datetime.now() > time_to_live:
+                    return {"moves": [], "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
 
                 if algorithm == "chebyshev":
                     puzzle.g = curr.g + curr.chebyshev(puzzle.board)
@@ -248,6 +253,10 @@ class TilePuzzle(object):
                 elif algorithm == "euclidean":
                     puzzle.g = curr.g + curr.euclidean(puzzle.board)
                     puzzle.h = puzzle.euclidean(self.sol)
+                    puzzle.f = puzzle.g + puzzle.h
+                elif algorithm == "lin_conflict":
+                    puzzle.g = curr.g + curr.linear_conflict(puzzle.board)
+                    puzzle.h = puzzle.linear_conflict(self.sol)
                     puzzle.f = puzzle.g + puzzle.h
 
                 go = True
@@ -265,6 +274,7 @@ class TilePuzzle(object):
 
             closed_set.add(curr)
 
+    ## A* Heuristics
     def manhattan(self, t1):
         total = 0
         pos = {}
@@ -314,3 +324,31 @@ class TilePuzzle(object):
                 pos2 = pos[a]
                 total += maximum(abs(x - pos2[0]),abs(y - pos2[1]))
         return math.sqrt(total)
+
+    def linear_conflict(self, node):
+        conflict = 0
+        for i in range(self.r):
+            row = self.board[i]
+            for j in range(self.c):
+                tile = row[j]
+                if tile == 0:
+                    continue
+                goal_i, goal_j = (tile - 1) // self.r, (tile - 1) % self.c
+                if i == goal_i:
+                    for k in range(j+1, self.c):
+                        other_tile = row[k]
+                        if other_tile == 0:
+                            continue
+                        other_goal_i, other_goal_j = (other_tile - 1) // self.r, (other_tile - 1) % self.c
+                        if i == other_goal_i and other_goal_j < goal_j:
+                            conflict += 2
+                elif j == goal_j:
+                    for k in range(i+1, self.r):
+                        other_row = self.board[k]
+                        other_tile = other_row[j]
+                        if other_tile == 0:
+                            continue
+                        other_goal_i, other_goal_j = (other_tile - 1) // self.r, (other_tile - 1) % self.c
+                        if j == other_goal_j and other_goal_i < goal_i:
+                            conflict += 2
+        return self.manhattan(node) + conflict

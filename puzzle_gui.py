@@ -94,6 +94,8 @@ class TilePuzzleGUI(tkinter.Frame):
             command=lambda: self.solve_a_star_click("euclidean")).pack(fill=tkinter.X, padx=1, pady=1)
         tkinter.Button(menu, text="Solve Using A* - Chebyshev",
             command=lambda: self.solve_a_star_click("chebyshev")).pack(fill=tkinter.X, padx=1, pady=1)
+        tkinter.Button(menu, text="Solve Using A* - Linear Conflict",
+            command=lambda: self.solve_a_star_click("lin_conflict")).pack(fill=tkinter.X, padx=1, pady=1)
         
 
         menu.pack(side=tkinter.RIGHT)
@@ -107,13 +109,13 @@ class TilePuzzleGUI(tkinter.Frame):
         self.board.update_tiles()
 
     def solve_iddfs_click(self):
-        self.board.animate_moves(next(self.puzzle.find_solution_iddfs()))
+        self.board.animate_moves(self.puzzle.find_solution_iddfs()['moves'])
 
     def solve_bfs_click(self):
-        self.board.animate_moves(next(self.puzzle.find_solution_bfs()))
+        self.board.animate_moves(self.puzzle.find_solution_bfs()['moves'])
 
     def solve_a_star_click(self, algorithm):
-        self.board.animate_moves(self.puzzle.find_solution_a_star(algorithm))
+        self.board.animate_moves(self.puzzle.find_solution_a_star(algorithm)['moves'])
 
 if __name__ == "__main__":
     root = tkinter.Tk()
