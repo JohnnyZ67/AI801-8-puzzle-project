@@ -155,6 +155,7 @@ class TilePuzzle(object):
         board[self.r - 1][self.c - 1] = 0
         return board
 
+    ## BFS
     def find_solution_bfs(self):
         """
         Finds the solution to the puzzle using;
@@ -195,7 +196,7 @@ class TilePuzzle(object):
                     for (updated_moves, config) in  new_board.iddfs_helper(limit, moves + [direction]):
                         yield (updated_moves, config)
 
-    # Required
+    ## IDDFS Base Method
     def find_solution_iddfs(self):
         limit = 0
         states_viewed = 0
@@ -211,7 +212,8 @@ class TilePuzzle(object):
                     return {"moves": [], "states_viewed": states_viewed, "processing_time": (datetime.now()-time_start).total_seconds()}
                 states_viewed += 1
             limit += 1
-    # Required
+
+    ## A* Base algorithm
     def find_solution_a_star(self, algorithm = "chebyshev"):
         states_viewed=0
         open_set = set()
@@ -252,6 +254,10 @@ class TilePuzzle(object):
                     puzzle.g = curr.g + curr.euclidean(puzzle.board)
                     puzzle.h = puzzle.euclidean(self.sol)
                     puzzle.f = puzzle.g + puzzle.h
+                elif algorithm == "lin_conflict":
+                    puzzle.g = curr.g + curr.linear_conflict(puzzle.board)
+                    puzzle.h = puzzle.linear_conflict(self.sol)
+                    puzzle.f = puzzle.g + puzzle.h
 
                 go = True
                 for board in open_set:
@@ -268,6 +274,7 @@ class TilePuzzle(object):
 
             closed_set.add(curr)
 
+    ## A* Heuristics
     def manhattan(self, t1):
         total = 0
         pos = {}
@@ -317,3 +324,31 @@ class TilePuzzle(object):
                 pos2 = pos[a]
                 total += maximum(abs(x - pos2[0]),abs(y - pos2[1]))
         return math.sqrt(total)
+
+    def linear_conflict(self, node):
+        conflict = 0
+        for i in range(self.r):
+            row = self.board[i]
+            for j in range(self.c):
+                tile = row[j]
+                if tile == 0:
+                    continue
+                goal_i, goal_j = (tile - 1) // self.r, (tile - 1) % self.c
+                if i == goal_i:
+                    for k in range(j+1, self.c):
+                        other_tile = row[k]
+                        if other_tile == 0:
+                            continue
+                        other_goal_i, other_goal_j = (other_tile - 1) // self.r, (other_tile - 1) % self.c
+                        if i == other_goal_i and other_goal_j < goal_j:
+                            conflict += 2
+                elif j == goal_j:
+                    for k in range(i+1, self.r):
+                        other_row = self.board[k]
+                        other_tile = other_row[j]
+                        if other_tile == 0:
+                            continue
+                        other_goal_i, other_goal_j = (other_tile - 1) // self.r, (other_tile - 1) % self.c
+                        if j == other_goal_j and other_goal_i < goal_i:
+                            conflict += 2
+        return self.manhattan(node) + conflict

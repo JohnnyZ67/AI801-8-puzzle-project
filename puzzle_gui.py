@@ -94,6 +94,8 @@ class TilePuzzleGUI(tkinter.Frame):
             command=lambda: self.solve_a_star_click("euclidean")).pack(fill=tkinter.X, padx=1, pady=1)
         tkinter.Button(menu, text="Solve Using A* - Chebyshev",
             command=lambda: self.solve_a_star_click("chebyshev")).pack(fill=tkinter.X, padx=1, pady=1)
+        tkinter.Button(menu, text="Solve Using A* - Linear Conflict",
+            command=lambda: self.solve_a_star_click("lin_conflict")).pack(fill=tkinter.X, padx=1, pady=1)
         
 
         menu.pack(side=tkinter.RIGHT)

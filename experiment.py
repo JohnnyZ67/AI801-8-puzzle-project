@@ -38,12 +38,18 @@ functions = [
         "classifier": "ASCHEB",
         "fn": "find_solution_a_star",
         "arg": "chebyshev"
+    },
+    {
+        "name": "A* - Linear Conflict",
+        "classifier": "ASLINCON",
+        "fn": "find_solution_a_star",
+        "arg": "lin_conflict"
     }
 ]
 
 def main(iterations=30):
 
-    fields = ["Board Number", "Inversions", "Algorithm", "Total States Viewed", "Processing Time"]
+    fields = ["Board Number", "Inversions", "Algorithm", "Solved", "Total States Viewed", "Processing Time"]
     rows = []
     board_count = 0
 
@@ -51,7 +57,7 @@ def main(iterations=30):
         print(f"Performing iterations for difficulty: {diff['level']}")
         for i in range(iterations):
             board_count += 1
-            board = puzzle.create_tile_puzzle(3, 3, 10)
+            board = puzzle.create_tile_puzzle(3, 3, 30)
             
             inversions = board.scramble(diff['count'])['inversions']
             while inversions == 0:
@@ -66,8 +72,10 @@ def main(iterations=30):
                 else:
                     result = getattr(board, fn['fn'])()
                 
+                solved = False if len(result['moves']) == 0 else True
+
                 print(f"      Result for {fn['name']}: {result}")
-                rows.append([board_count, inversions, fn['classifier'], result['states_viewed'], result['processing_time']])
+                rows.append([board_count, inversions, fn['classifier'], solved, result['states_viewed'], result['processing_time']])
 
     with open(f"{os.getcwd()}/reports/data_report_{datetime.now().strftime('%y_%m_%d_%H_%M')}.csv", 'w') as csvfile: 
         csvwriter = csv.writer(csvfile) 
