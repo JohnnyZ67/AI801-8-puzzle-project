@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Marquez
+    given-names: Vincenzo
+  - family-names: Williams
+    given-names: Laura
+  - family-names: Zielinski
+    given-names: Johnny
+title: "8 Puzzle GUI and Comparative Algorithm Experiment"
+version: 1.0.6
+date-released: 2023-04-26
